@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sentinel AI</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <style>
+        :root {
+            --bg-color: #f3f2f1; --text-color: #333333; --text-muted: #666666; --panel-bg: #ffffff;
+            --border-color: #cccccc; --primary-color: #2b579a; --primary-hover: #1e3e6d;
+            --secondary-btn: #e1dfdd; --secondary-hover: #d0d0d0; --info-box-bg: #e7f0f4;
+            --chat-ai-bg: #f1f1f1; --chat-user-bg: #d0e3f0; --chat-user-text: #004471; --input-bg: #ffffff;
+        }
+
+        body.dark-mode {
+            --bg-color: #1e1e1e; --text-color: #dfdfdf; --text-muted: #aaaaaa; --panel-bg: #2d2d2d;
+            --border-color: #444444; --primary-color: #5ab0ff; --primary-hover: #3a8cdb;
+            --secondary-btn: #3d3d3d; --secondary-hover: #4d4d4d; --info-box-bg: #2a3642;
+            --chat-ai-bg: #333333; --chat-user-bg: #1f4363; --chat-user-text: #cce4f7; --input-bg: #252526;
+        }
+
+        html { height: 100%; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 10px; background-color: var(--bg-color); color: var(--text-color); margin: 0; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; transition: background-color 0.3s, color 0.3s; }
+        
+        .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0; }
+        .app-header h3 { color: var(--primary-color); margin: 0; font-weight: 600; }
+        .top-controls { display: flex; gap: 5px; }
+        .icon-btn { background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-color); cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 4px; transition: 0.2s; }
+        .icon-btn:hover { background: var(--secondary-btn); }
+
+        .tab-container, details, #globalPersona { flex-shrink: 0; }
+        
+        .tab-container { display: flex; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); }
+        .tab-btn { flex: 1; padding: 8px 4px; border: none; background: none; cursor: pointer; font-weight: bold; color: var(--text-muted); font-size: 11px; text-align: center; transition: color 0.2s;}
+        .tab-btn.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); margin-bottom: -2px; }
+        
+        .tab-content { display: none; flex-grow: 1; min-height: 0; }
+        .tab-content.active { display: flex; flex-direction: column; }
+        
+        #tabCorrector { overflow-y: auto; padding-right: 4px; }
+        #tabAssistant { overflow: hidden; }
+        #tabHelp { overflow-y: auto; padding-right: 4px; padding-left: 2px; }
+
+        details { background: var(--panel-bg); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); margin-bottom: 10px; font-size: 11px; transition: background-color 0.3s; }
+        summary { font-weight: bold; cursor: pointer; color: var(--primary-color); outline: none; margin-bottom: 5px; }
+        
+        .setting-group { margin-top: 8px; }
+        .setting-group label { display: block; font-weight: bold; margin-bottom: 3px; color: var(--text-color);}
+        
+        input[type="text"], input[type="password"], select, textarea { width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; box-sizing: border-box; font-size: 11px; background-color: var(--input-bg); color: var(--text-color); font-family: inherit; transition: background-color 0.3s, color 0.3s;}
+        
+        .edit-row { display: flex; gap: 4px; margin-bottom: 6px; align-items: flex-start; }
+        .edit-row input { flex: 1; padding: 4px; font-size: 10px; }
+        .edit-row textarea { flex: 2; padding: 4px; font-size: 10px; height: 35px; resize: vertical; }
+        
+        .btn-delete { background: #d83b01; color: white; border: none; padding: 5px; cursor: pointer; border-radius: 3px; font-size: 10px; }
+        .btn-reset { background: var(--secondary-btn); color: var(--text-color); border: 1px solid var(--border-color); padding: 5px; cursor: pointer; border-radius: 3px; font-size: 10px; }
+        .btn-reset:hover { background: var(--secondary-hover); }
+        .btn-add { background: #107c41; color: white; border: none; padding: 6px; font-size: 11px; cursor: pointer; border-radius: 3px; width: 100%; font-weight: bold; margin-top: 5px; }
+
+        .quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; flex-shrink: 0; }
+        .btn-quick { background: var(--secondary-btn); border: 1px solid var(--border-color); border-radius: 3px; padding: 5px 2px; font-size: 10px; cursor: pointer; color: var(--text-color); width: 100%; box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn-quick:hover { background: var(--secondary-hover); }
+        
+        .btn-continue { background: var(--primary-color); color: white; border: none; border-radius: 3px; padding: 6px; font-size: 11px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; flex-shrink: 0; }
+        .btn-continue:hover { background: var(--primary-hover); }
+
+        textarea.main-prompt { height: 90px; min-height: 80px; margin-bottom: 2px; padding: 8px; font-size: 12px; resize: vertical; flex-shrink: 0; }
+        
+        .instruction-label { font-size: 11px; font-weight: bold; color: var(--text-color); display: block; margin-bottom: 2px; flex-shrink: 0; }
+        .helper-text { font-size: 10px; color: var(--primary-color); margin-top: 0; margin-bottom: 4px; flex-shrink: 0; }
+        
+        .options-group { background: var(--panel-bg); border: 1px solid var(--border-color); padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 11px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+        .options-group label { display: flex; align-items: center; cursor: pointer; margin: 0; color: var(--text-color); }
+        .options-group input[type="checkbox"] { margin-right: 6px; margin-top: 0; margin-bottom: 0; }
+        .info-note { font-size: 9px; color: var(--text-muted); margin-top: 4px; margin-bottom: 0; font-style: italic; }
+        
+        button.btn-primary { background-color: var(--primary-color); color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; font-size: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-shrink: 0;}
+        button.btn-primary:hover { background-color: var(--primary-hover); }
+        button.btn-primary:disabled { background-color: var(--text-muted); cursor: not-allowed; }
+
+        .history-item { background: var(--input-bg); border: 1px solid var(--border-color); padding: 6px; margin-bottom: 4px; border-radius: 3px; cursor: pointer; }
+        .history-item:hover { background: var(--secondary-btn); }
+        .history-text { font-size: 9px; color: var(--text-muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .chat-container { display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; margin-top: 5px; }
+        .chat-box { flex-grow: 1; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; overflow-y: auto; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .chat-msg { max-width: 85%; padding: 8px; border-radius: 6px; font-size: 12px; line-height: 1.4; color: var(--text-color); white-space: pre-wrap; }
+        .chat-msg.user { align-self: flex-end; background: var(--chat-user-bg); color: var(--chat-user-text); }
+        .chat-msg.ai { align-self: flex-start; background: var(--chat-ai-bg); }
+        
+        .chat-input-area { display: flex; gap: 5px; flex-shrink: 0; }
+        .chat-input-area textarea { flex-grow: 1; height: 45px; resize: none; }
+        .chat-input-area button { background: var(--primary-color); color: white; border: none; border-radius: 4px; padding: 0 15px; cursor: pointer; font-weight: bold; }
+
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid white; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #statusMsg { color: #d83b01; font-size: 11px; margin-top: 8px; font-weight: bold; text-align: center; flex-shrink: 0; }
+        
+        #streamPreview { display: none; font-size: 12px; color: var(--text-color); background-color: var(--input-bg); max-height: 150px; overflow-y: auto; border: 1px dashed var(--primary-color); padding: 8px; margin-top: 10px; border-radius: 4px; font-style: italic; flex-shrink: 0; white-space: pre-wrap;}
+
+        #toastMsg { visibility: hidden; min-width: 180px; background-color: #107c41; color: #fff; text-align: center; border-radius: 4px; padding: 8px 12px; position: fixed; z-index: 1000; left: 50%; bottom: 20px; font-size: 11px; font-weight: bold; transform: translateX(-50%); opacity: 0; transition: opacity 0.4s, bottom 0.4s; }
+        #toastMsg.show { visibility: visible; opacity: 1; bottom: 40px; }
+
+        .help-section { background: var(--panel-bg); padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 15px; }
+        .help-section h4 { color: var(--primary-color); margin-top: 0; margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
+        .help-section p, .help-section ul { font-size: 11px; line-height: 1.5; color: var(--text-color); margin-top: 0; margin-bottom: 8px; }
+        .help-section ul { padding-left: 18px; }
+        .help-section li { margin-bottom: 4px; }
+        .help-section code { background: var(--secondary-btn); padding: 2px 4px; border-radius: 3px; font-family: Consolas, monospace; font-size: 10px; border: 1px solid var(--border-color); word-break: break-all; display: inline-block; margin-top: 2px;}
+        
+        .selection-guide { background: var(--info-box-bg); border-left: 3px solid var(--primary-color); padding: 6px; font-size: 11px; color: var(--primary-color); font-weight: bold; margin-bottom: 10px; flex-shrink: 0; }
+        
+        .btn-config { background: var(--secondary-btn); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 3px; padding: 6px; font-size: 10px; cursor: pointer; flex: 1; font-weight: bold; text-align: center;}
+        .btn-config:hover { background: var(--secondary-hover); }
+    </style>
+</head>
+<body>
+    
+    <div class="app-header">
+        <h3>Sentinel AI</h3>
+        <div class="top-controls">
+            <button id="langToggle" class="icon-btn" title="Changer de langue / Change Language">🇬🇧</button>
+            <button id="themeToggle" class="icon-btn" title="Thème Sombre/Clair">🌙 | ☀️</button>
+        </div>
+    </div>
+
+    <div class="tab-container">
+        <button class="tab-btn active" id="btnTabCorrector" data-i18n="tabCorr">✏️ Correcteur</button>
+        <button class="tab-btn" id="btnTabAssistant" data-i18n="tabAss">💬 Assistant</button>
+        <button class="tab-btn" id="btnTabHelp" data-i18n="tabHelp">❓ Aide</button>
+    </div>
+
+    <details>
+        <summary data-i18n="setSettings">⚙️ Paramètres IA & Personas</summary>
+        
+        <div class="setting-group"><label data-i18n="setBaseLang">Langue de base de l'IA :</label><input type="text" id="baseLanguage" placeholder="ex: Français, English"></div>
+        <p class="info-note" data-i18n="setBaseHint">ℹ️ Force l'IA à utiliser cette langue par défaut.</p>
+        
+        <div class="setting-group"><label>URL de l'API :</label><input type="text" id="apiUrl" placeholder="ex: http://localhost:1234/v1/chat/completions"></div>
+        <div class="setting-group"><label data-i18n="setModel">Nom du modèle :</label><input type="text" id="modelName" placeholder="ex: mistral-7b"></div>
+        <div class="setting-group"><label data-i18n="setKey">Clé API (Optionnel) :</label><input type="password" id="apiKey" placeholder="Laissez vide pour le local"></div>
+        
+        <div class="options-group" style="margin-top:10px; margin-bottom:10px; padding:6px;">
+            <label><input type="checkbox" id="chkStreaming"> <span data-i18n="setStream">⚡ Activer le Streaming API</span></label>
+            <p class="info-note" data-i18n="setStreamHint">ℹ️ Répond en direct mot à mot.</p>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border-color); margin:10px 0;">
+        <p style="font-size:10px; color:var(--text-muted); margin-top:0;" data-i18n="setPersHint">📝 <b>Personas (Profils)</b> : Créez des profils pour dicter à l'IA comment se comporter.</p>
+        <div id="settingsPersonasList"></div>
+        <div class="edit-row" style="margin-top:5px;">
+            <input type="text" id="newPersonaTitle" placeholder="Nom (ex: Avocat)">
+            <textarea id="newPersonaPrompt" placeholder="Instruction (ex: Tu es un avocat...)"></textarea>
+        </div>
+        <button type="button" class="btn-add" id="btnAddPersona" data-i18n="btnAddPers">➕ Ajouter ce Persona</button>
+        
+        <hr style="border:0; border-top:1px solid var(--border-color); margin:15px 0 10px 0;">
+        <div style="display: flex; gap: 5px;">
+            <button type="button" class="btn-config" id="btnExportConfig" data-i18n="btnExp">💾 Exporter Config</button>
+            <button type="button" class="btn-config" id="btnImportClick" data-i18n="btnImp">📂 Importer Config</button>
+            <input type="file" id="btnImportConfig" style="display: none;" accept=".json">
+        </div>
+    </details>
+
+    <div id="globalPersona" style="background: var(--panel-bg); padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 10px;">
+        <label style="font-size: 11px; font-weight: bold; color: var(--text-color); display: block; margin-bottom: 4px;" data-i18n="lblPersActive">🎭 Persona actif (Style de l'IA) :</label>
+        <select id="activePersonaSelect"></select>
+    </div>
+
+    <div id="tabCorrector" class="tab-content active">
+        
+        <details>
+            <summary data-i18n="setBtns">🛠️ Paramètres des boutons rapides</summary>
+            <div id="settingsButtonsList"></div>
+            <hr style="border:0; border-top:1px solid var(--border-color); margin:10px 0;">
+            <div class="edit-row">
+                <input type="text" id="newBtnTitle" placeholder="Titre (ex: 🚀 Fun)">
+                <textarea id="newBtnPrompt" placeholder="Instruction de l'IA..."></textarea>
+            </div>
+            <button type="button" class="btn-add" id="btnAddButton" data-i18n="btnAddBtn">➕ Ajouter ce bouton</button>
+        </details>
+
+        <div class="selection-guide" data-i18n="guideSel">
+            🖱️ Sélectionnez le texte à modifier dans votre document.
+        </div>
+
+        <span class="instruction-label" data-i18n="lblTrad">Langue de traduction :</span>
+        <p class="helper-text" data-i18n="hintTrad">💡 Par défaut (si vide) : <b>Anglais</b></p>
+        <div class="setting-group" style="margin-bottom: 10px; margin-top: 0;">
+            <input type="text" id="targetLanguage" placeholder="ex: Espagnol, Italien, Allemand...">
+        </div>
+        
+        <div class="quick-actions" id="quickActionsContainer"></div>
+        <div style="font-size: 9px; color: var(--text-muted); text-align: right; margin-bottom: 10px; font-style: italic; flex-shrink: 0;" data-i18n="hintOpts">
+            Allez dans les options pour ajouter des boutons d'accès rapide.
+        </div>
+        
+        <button type="button" class="btn-continue" id="btnContinueText" data-i18n="btnCont">➡️ Continuer la rédaction (Générer la suite)</button>
+
+        <span class="instruction-label" data-i18n="lblInst">Instruction personnalisée :</span>
+        <p class="helper-text" data-i18n="hintInst">💡 Par défaut (si vide) : <b>"Corrige l'orthographe et la grammaire de ce texte."</b></p>
+        <textarea id="customPrompt" class="main-prompt" placeholder="Tapez votre instruction ici..."></textarea>
+        
+        <div style="text-align: right; margin-bottom: 10px; flex-shrink: 0;">
+            <button type="button" style="background:none; border:none; color:#d83b01; font-size:10px; cursor:pointer; text-decoration:underline;" id="btnClearPrompt" data-i18n="btnClear">🗑️ Effacer l'instruction</button>
+        </div>
+
+        <p class="info-note" style="margin-bottom: 4px;" data-i18n="noteShort">⚠️ Note : Une sélection trop courte peut entraîner des choix inadaptés.</p>
+
+        <div class="options-group">
+            <label><input type="checkbox" id="chkContext"> <span data-i18n="optCtx">🔍 Contexte élargi (Lit le paragraphe complet)</span></label>
+            <label><input type="checkbox" id="chkTrack"> <span data-i18n="optTrk">📝 Activer le "Suivi des modifications"</span></label>
+            <label><input type="checkbox" id="chkExplain"> <span data-i18n="optExp">💡 Ajouter une bulle d'explication</span></label>
+            <p class="info-note" data-i18n="optHint">ℹ️ Cocher ces éléments accroît le temps de réponse (tokens).</p>
+        </div>
+
+        <button class="btn-primary" id="btnCorriger">
+            <div class="spinner" id="btnSpinner"></div><span id="btnText" data-i18n="btnRun">✨ Lancer l'IA</span>
+        </button>
+        
+        <div id="streamPreview"></div>
+        <p id="statusMsg"></p>
+
+        <details style="margin-top: 15px; flex-shrink: 0;">
+            <summary data-i18n="histReq">🕒 Historique des requêtes (Instructions)</summary>
+            <div id="promptHistoryList" style="display:flex; flex-direction:column; gap:4px;"></div>
+        </details>
+        <details style="flex-shrink: 0; margin-bottom: 2px;">
+            <summary data-i18n="histRep">⏪ Historique des textes remplacés</summary>
+            <p class="info-note" style="margin-top:0; margin-bottom:6px;" data-i18n="histHint">💡 Cliquez sur un ancien texte pour copier l'original.</p>
+            <div id="replaceHistoryList" style="display:flex; flex-direction:column; gap:4px;"></div>
+        </details>
+        
+        <p class="info-note" style="text-align:center; margin-bottom: 15px;" data-i18n="histLimit">ℹ️ Taille de l'historique maximum : 10 éléments.</p>
+
+    </div>
+
+    <div id="tabAssistant" class="tab-content">
+        <div style="font-size:11px; color:var(--text-muted); flex-shrink: 0;" data-i18n="chatGuide">
+            💡 Discutez librement avec l'IA. Si vous surlignez du texte dans Word, l'IA l'utilisera automatiquement.
+        </div>
+        <div class="chat-container">
+            <div class="chat-box" id="chatBox">
+                <div class="chat-msg ai" id="chatWelcome" data-i18n="chatMsg">Bonjour ! Je suis votre assistant. Posez-moi une question.</div>
+            </div>
+            <div class="chat-input-area">
+                <textarea id="chatInput" placeholder="Tapez votre message... (Entrée pour envoyer)"></textarea>
+                <button id="btnSendChat">▶</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tabHelp" class="tab-content">
+        <div class="help-section">
+            <h4 data-i18n="hTitle1">🧠 Comment fonctionne l'outil ?</h4>
+            <p><b data-i18n="hSub1">✏️ Onglet Correcteur :</b> <span data-i18n="hTxt1">Modifie directement Word. Surlignez un texte, choisissez une instruction et l'IA remplacera votre sélection.</span></p>
+            <p><b data-i18n="hSub2">💬 Onglet Assistant :</b> <span data-i18n="hTxt2">Chat intelligent. Si vous surlignez du texte, l'IA l'utilisera comme contexte.</span></p>
+        </div>
+        
+        <div class="help-section">
+            <h4 data-i18n="hLocalTitle">🖥️ IA Locale (Gratuit & Privé)</h4>
+            <p data-i18n="hLocalDesc">Idéal pour la confidentialité. L'IA tourne sur votre ordinateur.</p>
+            <ul>
+                <li><b>LM Studio :</b><br><code>http://localhost:1234/v1/chat/completions</code><br><span style="color:var(--text-muted); font-size:10px;" data-i18n="hLmsNote">Modèle: Laissez vide. Clé API: Laissez vide. (Activez CORS !)</span></li>
+                <li><b>Ollama :</b><br><code>http://localhost:11434/v1/chat/completions</code><br><span style="color:var(--text-muted); font-size:10px;" data-i18n="hOllamaNote">Modèle: llama3, mistral... (Nécessite d'autoriser l'API externe d'Ollama)</span></li>
+            </ul>
+        </div>
+
+        <div class="help-section">
+            <h4 data-i18n="hCloudTitle">☁️ IA en Ligne (Cloud)</h4>
+            <p data-i18n="hCloudDesc">Pour utiliser les modèles les plus performants. Nécessite une clé API.</p>
+            <ul>
+                <li><b>OpenAI :</b><br><code>https://api.openai.com/v1/chat/completions</code><br><span style="color:var(--text-muted); font-size:10px;">Modèles : gpt-4o, gpt-3.5-turbo</span></li>
+                <li><b>Mistral :</b><br><code>https://api.mistral.ai/v1/chat/completions</code><br><span style="color:var(--text-muted); font-size:10px;">Modèles : mistral-large-latest, open-mistral-7b</span></li>
+                <li><b>Groq :</b><br><code>https://api.groq.com/openai/v1/chat/completions</code><br><span style="color:var(--text-muted); font-size:10px;">Modèles : llama3-70b-8192, mixtral-8x7b-32768</span></li>
+                <li><b>Google Gemini :</b><br><code>https://generativelanguage.googleapis.com/v1beta/openai/chat/completions</code><br><span style="color:var(--text-muted); font-size:10px;">Modèles : gemini-1.5-pro, gemini-1.5-flash</span></li>
+                <li data-i18n="hClaudeInfo"><b>Claude & Autres (via OpenRouter) :</b><br><code>https://openrouter.ai/api/v1/chat/completions</code><br><span style="color:var(--text-muted); font-size:10px;">Modèles : anthropic/claude-3-opus, google/gemini-pro</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="toastMsg" data-i18n="toast">✅ Fait !</div>
+<script type="text/javascript" src="taskpane.js"></script>
+</body>
+</html>
