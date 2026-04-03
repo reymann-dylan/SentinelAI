@@ -23,7 +23,7 @@ const i18n = {
         hintInst: "💡 Par défaut (si vide) : <b>Corrige l'orthographe et la grammaire de ce texte.</b>",
         btnClear: "🗑️ Effacer l'instruction", noteShort: "⚠️ Note : Une sélection trop courte peut entraîner des choix inadaptés.",
         optCtx: "🔍 Contexte élargi (Lit le paragraphe complet)", optTrk: "📝 Activer le 'Suivi des modifications'",
-        optExp: "💡 Ajouter une bulle d'explication", optHint: "ℹ️ Cocher ces éléments accroît le temps de réponse (tokens).",
+        optExp: "💡 Ajouter une bulle d'explication", optFmt: "🎨 Conserver les formats multiples (Expérimental)", optHint: "ℹ️ Cocher ces éléments accroît le temps de réponse (tokens).",
         btnRun: "✨ Lancer l'IA", histReq: "🕒 Historique des requêtes (Instructions)",
         histRep: "⏪ Historique des textes remplacés", histHint: "💡 Cliquez sur un ancien texte pour copier l'original.",
         histLimit: "ℹ️ Taille de l'historique maximum : 10 éléments.",
@@ -55,7 +55,7 @@ const i18n = {
         hintInst: "💡 Default (if empty): <b>Fix spelling and grammar.</b>",
         btnClear: "🗑️ Clear instruction", noteShort: "⚠️ Note: A very short selection may lead to poor context choices.",
         optCtx: "🔍 Extended Context (Reads paragraph)", optTrk: "📝 Enable 'Track Changes'",
-        optExp: "💡 Add explanation bubble", optHint: "ℹ️ Checking these increases API requests and time (tokens).",
+        optExp: "💡 Add explanation bubble", optFmt: "🎨 Keep mixed formatting (Experimental)", optHint: "ℹ️ Checking these increases API requests and time (tokens).",
         btnRun: "✨ Run AI", histReq: "🕒 Prompt History",
         histRep: "⏪ Replaced Text History", histHint: "💡 Click on an old text to copy the original.",
         histLimit: "ℹ️ Maximum history size: 10 items.",
@@ -96,7 +96,7 @@ Office.onReady((info) => {
 
     const inputs = ["apiUrl", "modelName", "apiKey", "customPrompt", "targetLanguage", "baseLanguage", "activePersonaSelect"];
     inputs.forEach(id => document.getElementById(id).addEventListener("input", sauvegarderParametres));
-    const checkboxes = ["chkContext", "chkTrack", "chkExplain", "chkStreaming"];
+    const checkboxes = ["chkContext", "chkTrack", "chkExplain", "chkFormat", "chkStreaming"];
     checkboxes.forEach(id => document.getElementById(id).addEventListener("change", sauvegarderParametres));
 
     document.getElementById("btnClearPrompt").onclick = () => { document.getElementById("customPrompt").value = ""; sauvegarderParametres(); };
@@ -176,7 +176,8 @@ function exportConfig() {
         personas: currentPersonas,
         promptHistory: promptHistory,
         baseLanguage: window.localStorage.getItem("ai_baseLanguage"),
-        chkStreaming: document.getElementById("chkStreaming").checked
+        chkStreaming: document.getElementById("chkStreaming").checked,
+        chkFormat: document.getElementById("chkFormat").checked
     };
     const blob = new Blob([JSON.stringify(config, null, 2)], {type: "application/json"});
     const url = URL.createObjectURL(blob);
@@ -200,6 +201,7 @@ function importConfig(event) {
             if (config.promptHistory) window.localStorage.setItem("ai_promptHistory", JSON.stringify(config.promptHistory));
             if (config.baseLanguage) window.localStorage.setItem("ai_baseLanguage", config.baseLanguage);
             if (config.chkStreaming !== undefined) window.localStorage.setItem("ai_chkStreaming", config.chkStreaming);
+            if (config.chkFormat !== undefined) window.localStorage.setItem("ai_chkFormat", config.chkFormat);
             
             chargerParametres(); initData();
             showToast(appLang === "fr" ? "📂 Configuration importée !" : "📂 Config imported!");
@@ -348,6 +350,7 @@ function sauvegarderParametres() {
     window.localStorage.setItem("ai_chkContext", document.getElementById("chkContext").checked);
     window.localStorage.setItem("ai_chkTrack", document.getElementById("chkTrack").checked);
     window.localStorage.setItem("ai_chkExplain", document.getElementById("chkExplain").checked);
+    window.localStorage.setItem("ai_chkFormat", document.getElementById("chkFormat").checked);
     window.localStorage.setItem("ai_chkStreaming", document.getElementById("chkStreaming").checked);
 }
 
@@ -366,6 +369,7 @@ function chargerParametres() {
     document.getElementById("chkContext").checked = window.localStorage.getItem("ai_chkContext") === "true";
     document.getElementById("chkTrack").checked = window.localStorage.getItem("ai_chkTrack") === "true";
     document.getElementById("chkExplain").checked = window.localStorage.getItem("ai_chkExplain") === "true";
+    document.getElementById("chkFormat").checked = window.localStorage.getItem("ai_chkFormat") === "true";
     document.getElementById("chkStreaming").checked = window.localStorage.getItem("ai_chkStreaming") === "true";
 }
 
@@ -464,15 +468,6 @@ async function handleChat() {
     }
 }
 
-function appendChatMessage(text, sender) {
-    const box = document.getElementById("chatBox");
-    const div = document.createElement("div");
-    div.className = "chat-msg " + sender;
-    div.innerText = text; 
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-}
-
 async function handleIAAction(mode) {
   const btn = document.getElementById("btnCorriger");
   const spinner = document.getElementById("btnSpinner");
@@ -483,6 +478,7 @@ async function handleIAAction(mode) {
   const optContext = document.getElementById("chkContext").checked;
   const optTrack = document.getElementById("chkTrack").checked;
   const optExplain = document.getElementById("chkExplain").checked;
+  const optFormat = document.getElementById("chkFormat").checked;
   const isStreaming = document.getElementById("chkStreaming").checked;
 
   let instructionText = document.getElementById("customPrompt").value.trim() || (appLang === "fr" ? "Corrige l'orthographe et la grammaire." : "Fix spelling and grammar.");
@@ -502,14 +498,32 @@ async function handleIAAction(mode) {
       const selection = context.document.getSelection();
       selection.load("text");
       
-      let contextText = "";
+      let htmlResult;
+      if (optFormat && mode === 'replace') {
+          htmlResult = selection.getHtml();
+      }
+
+      let contextResult;
       if (optContext) {
-        const paragraphs = selection.paragraphs; paragraphs.load("text"); await context.sync();
-        contextText = paragraphs.items.map(p => p.text).join(" ");
-      } else { await context.sync(); }
+        const paragraphs = selection.paragraphs; 
+        paragraphs.load("text"); 
+        contextResult = paragraphs;
+      }
+      
+      await context.sync();
 
       if (selection.text.trim() === "") throw new Error(appLang === "fr" ? "Veuillez d'abord surligner du texte !" : "Please select text first!");
       const originalText = selection.text;
+      
+      let contextText = "";
+      if (optContext && contextResult) {
+          contextText = contextResult.items.map(p => p.text).join(" ");
+      }
+
+      let originalHtml = "";
+      if (optFormat && htmlResult) {
+          originalHtml = htmlResult.value;
+      }
 
       let systemPrompt = personaPrompt + ` Règle CRUCIALE : Tu dois IMPÉRATIVEMENT écrire ta réponse en ${baseLang}. NE TRADUIS PAS dans une autre langue, sauf si l'instruction contient explicitement le mot 'Traduis' ou 'Translate'. `;
       let userPrompt = "";
@@ -521,12 +535,15 @@ async function handleIAAction(mode) {
           userPrompt = `Instruction : ${instructionText} (IMPORTANT : Réponds en ${baseLang} si le texte n'est pas à traduire)\n\n`;
           if (optContext && contextText) userPrompt += `Pour t'aider, voici le contexte global : "${contextText}"\n\n`;
           
-          if (optExplain) {
-            systemPrompt += "Sépare ta réponse en deux blocs avec ces balises exactes : <TEXTE> pour la correction finale, et <EXPLICATION> pour expliquer.";
-            userPrompt += `Texte exact à corriger : "${originalText}"\n\nRéponds avec <TEXTE>...</TEXTE> et <EXPLICATION>...</EXPLICATION>.`;
+          if (optFormat) {
+              systemPrompt += " Règle ABSOLUE : Tu vas recevoir un code source HTML contenant le texte. Tu DOIS IMPÉRATIVEMENT renvoyer le résultat sous forme de code HTML strict en conservant exactement toutes les balises de style (couleurs, polices, tailles, balises MSO) d'origine. Ne casse surtout pas la mise en forme.";
+              userPrompt += `Code HTML exact à corriger : \n\`\`\`html\n${originalHtml}\n\`\`\`\n\nRenvoye uniquement le code HTML final corrigé :`;
+          } else if (optExplain) {
+              systemPrompt += "Sépare ta réponse en deux blocs avec ces balises exactes : <TEXTE> pour la correction finale, et <EXPLICATION> pour expliquer.";
+              userPrompt += `Texte exact à corriger : "${originalText}"\n\nRéponds avec <TEXTE>...</TEXTE> et <EXPLICATION>...</EXPLICATION>.`;
           } else {
-            systemPrompt += "Règle ABSOLUE : Renvoie UNIQUEMENT le texte final corrigé. Aucun préfixe, aucun guillemet.";
-            userPrompt += `Texte exact à corriger : "${originalText}"\n\nTexte final :`;
+              systemPrompt += "Règle ABSOLUE : Renvoie UNIQUEMENT le texte final corrigé. Aucun préfixe, aucun guillemet.";
+              userPrompt += `Texte exact à corriger : "${originalText}"\n\nTexte final :`;
           }
       }
 
@@ -538,14 +555,15 @@ async function handleIAAction(mode) {
       let texteFinal = reponseLLM;
       let explicationText = "";
 
-      if (mode === 'replace' && optExplain) {
+      if (mode === 'replace' && !optFormat && optExplain) {
         const tMatch = reponseLLM.match(/<TEXTE>([\s\S]*?)<\/TEXTE>/i);
         const eMatch = reponseLLM.match(/<EXPLICATION>([\s\S]*?)<\/EXPLICATION>/i);
         if (tMatch) texteFinal = tMatch[1].trim();
         if (eMatch) explicationText = eMatch[1].trim();
       }
 
-      texteFinal = texteFinal.replace(/^(Correction|Texte corrigé|Voici le texte|Texte final|Texte)[\s]*:[\s]*/i, "").replace(/^["']|["']$/g, "").trim();
+      texteFinal = texteFinal.replace(/^(Correction|Texte corrigé|Voici le texte|Texte final|Texte)[\s]*:[\s]*/i, "").trim();
+      if (!optFormat) { texteFinal = texteFinal.replace(/^["']|["']$/g, "").trim(); }
 
       if (optTrack) context.document.changeTrackingMode = "TrackAll"; 
       else context.document.changeTrackingMode = "Off"; 
@@ -554,11 +572,17 @@ async function handleIAAction(mode) {
       if (mode === 'continue') {
           insertedRange = selection.insertText(" " + texteFinal, Word.InsertLocation.after);
       } else {
-          insertedRange = selection.insertText(texteFinal, Word.InsertLocation.replace);
+          if (optFormat) {
+              // Nettoyage des balises markdown si l'IA en a rajouté
+              let cleanHtml = texteFinal.replace(/```html\n?/gi, "").replace(/```\n?/g, "").trim();
+              insertedRange = selection.insertHtml(cleanHtml, Word.InsertLocation.replace);
+          } else {
+              insertedRange = selection.insertText(texteFinal, Word.InsertLocation.replace);
+          }
           addReplaceHistory(originalText, texteFinal);
       }
       
-      if (mode === 'replace' && optExplain && explicationText) insertedRange.insertComment(`🤖 IA : ${explicationText}`);
+      if (mode === 'replace' && optExplain && explicationText && !optFormat) insertedRange.insertComment(`🤖 IA : ${explicationText}`);
 
       await context.sync();
       statusMsg.style.color = "green"; statusMsg.innerText = i18n[appLang].toast;
