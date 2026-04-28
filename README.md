@@ -28,8 +28,8 @@ L'installation de cet Add-in est très rapide et ne requiert aucune compétence 
 * Extrayez le dossier sur votre ordinateur (par exemple, dans vos Documents).
 * Double-cliquez sur le fichier `install.bat`. Si Windows affiche une alerte de protection, cliquez sur "Informations complémentaires" puis sur "Exécuter quand même".
 * Ouvrez Microsoft Word : vous trouverez Sentinel AI directement dans l'onglet Compléments.
-* Installer LM Studio et instaler via LM Studio léger comme Gemma 4 (model e4b ou e2b) ou encore Mistral 7b
-* [! Il est recommender d'avoir une carte graphique moderne sur son ordinateur pour un fonctionnement optimal]
+* Installez LM Studio et téléchargez un modèle léger comme le Gemma 4 (modèle e4b ou e2b) ou le Mistral 7b.
+* [ ! Pour des performances optimales, il est recommandé d'utiliser une carte graphique récente.]
 
 *(Les dossiers contenant le code source sont fournis dans l'archive à titre informatif, mais l'outil utilise la version hébergée en ligne pour fonctionner).*
 
