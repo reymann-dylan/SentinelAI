@@ -4,7 +4,7 @@
 
 Sentinel AI est un complément (Add-in) "intelligent" et ultra-léger pour Microsoft Word. Il ne s'agit pas d'un logiciel lourd, mais d'un outil intégré qui ajoute un assistant IA et un correcteur avancé directement dans votre traitement de texte, avec une priorité absolue donnée à la confidentialité de vos données.
 
-_*(Note : conçu en un week end, il ne s'agit que d'un proof of concept, les mis a jours seront très éparces, libre a vous de vous "approprier" le projet)_
+_(Note : conçu en un week end, il ne s'agit que d'un proof of concept, les mis a jours seront très éparces, libre a vous de vous "approprier" le projet)_
 
 ## Confidentialité & Sécurité
 Sentinel AI a été conçu pour manipulent des documents sensibles localement.
